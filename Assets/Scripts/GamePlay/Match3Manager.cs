@@ -8,7 +8,7 @@ public class Match3Manager : MonoBehaviour
 {
     public static Match3Manager Instance;
 
-    [Header("Grid Ayarları")] public int width = 8;
+    [Header("Grid Settings")] public int width = 8;
     public int height = 8;
     public Vector2 blockSize = new Vector2(100, 100);
     [SerializeField] private Vector2 extraOffset = Vector2.zero;
@@ -63,9 +63,7 @@ public class Match3Manager : MonoBehaviour
         if (blockPrefab != null && blockPrefab.TryGetComponent(out RectTransform rtPrefab) &&
             blockSize != rtPrefab.sizeDelta)
         {
-            Debug.LogWarning(
-                "BlockSize ayarın, prefab boyutundan farklı. Prefab boyutuna uyum sağlamak için blockSize güncellendi. Bunu dilersen manuel olarak düzenleyebilir veya prefab boyutunu değiştirebilirsin.");
-            blockSize = rtPrefab.sizeDelta;
+                      blockSize = rtPrefab.sizeDelta;
         }
 #endif
         GenerateGrid();
@@ -548,7 +546,6 @@ public class Match3Manager : MonoBehaviour
     {
         if (rt == null)
         {
-            Debug.LogWarning("MoveBlockUI: RectTransform null, hareket edilemedi.");
             yield break;
         }
 
