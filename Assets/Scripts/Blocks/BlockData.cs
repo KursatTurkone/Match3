@@ -14,6 +14,6 @@ public enum BlockType
 public class BlockData : ScriptableObject
 {
     public Sprite sprite;
-    public Color color; // Normal bloklar için renk
+    public Color color; 
     public BlockType type = BlockType.Normal;
 }
