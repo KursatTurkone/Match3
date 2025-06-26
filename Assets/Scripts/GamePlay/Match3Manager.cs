@@ -2,18 +2,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.UI;
+
 
 public class Match3Manager : MonoBehaviour
 {
     public static Match3Manager Instance;
 
-    [Header("Grid Ayarları")]
-    public int width = 8;
+    [Header("Grid Ayarları")] public int width = 8;
     public int height = 8;
     public Vector2 blockSize = new Vector2(100, 100);
-    [SerializeField]
-    private Vector2 extraOffset = Vector2.zero;
+    [SerializeField] private Vector2 extraOffset = Vector2.zero;
     public Transform blockParent;
     public GameObject blockPrefab;
     public List<BlockData> normalBlocks;
@@ -39,28 +37,35 @@ public class Match3Manager : MonoBehaviour
     {
         if (blockParent == null)
         {
-            Debug.LogError("blockParent Transform ataması yapılmamış! Lütfen Canvas altında blokları içerecek bir RectTransform atayın.");
             enabled = false;
             return;
         }
+
         if (blockParent.GetComponent<RectTransform>() == null)
         {
-            Debug.LogError("blockParent bir RectTransform değil! Lütfen Canvas altında blokları içerecek bir RectTransform atayın.");
+            enabled = false;
+            return;
+        }
+
+        if (blockPrefab == null)
+        {
+            enabled = false;
+            return;
+        }
+
+        if (ObjectPoolManager.Instance == null)
+        {
             enabled = false;
             return;
         }
 
 #if UNITY_EDITOR
-        if (blockPrefab != null && blockPrefab.TryGetComponent(out RectTransform rtPrefab) && blockSize != rtPrefab.sizeDelta)
+        if (blockPrefab != null && blockPrefab.TryGetComponent(out RectTransform rtPrefab) &&
+            blockSize != rtPrefab.sizeDelta)
         {
-            Debug.LogWarning("BlockSize ayarın, prefab boyutundan farklı. Prefab boyutuna uyum sağlamak için blockSize güncellendi. Bunu dilersen manuel olarak düzenleyebilir veya prefab boyutunu değiştirebilirsin.");
+            Debug.LogWarning(
+                "BlockSize ayarın, prefab boyutundan farklı. Prefab boyutuna uyum sağlamak için blockSize güncellendi. Bunu dilersen manuel olarak düzenleyebilir veya prefab boyutunu değiştirebilirsin.");
             blockSize = rtPrefab.sizeDelta;
-        }
-        else if (blockPrefab == null)
-        {
-            Debug.LogError("Block Prefab ataması yapılmamış! Lütfen bir UI Image prefab'ı atayın.");
-            enabled = false;
-            return;
         }
 #endif
         GenerateGrid();
@@ -87,7 +92,6 @@ public class Match3Manager : MonoBehaviour
                     }
                     else
                     {
-                        Debug.LogError($"'{x},{y}' konumu için geçerli BlockData seçilemedi. Varsayılan atama yapılıyor.");
                         newBlock.Setup(normalBlocks[0]);
                     }
 
@@ -111,42 +115,45 @@ public class Match3Manager : MonoBehaviour
 
     Block CreateBlockGameObject(int x, int y, bool isFallingNewBlock = false, int emptyCountAbove = 0)
     {
-        if (blockPrefab == null)
+        if (blockPrefab == null || ObjectPoolManager.Instance == null)
         {
-            Debug.LogError("CreateBlockGameObject: blockPrefab null!");
             return null;
         }
 
-        GameObject go = Instantiate(blockPrefab, blockParent);
+        GameObject go = ObjectPoolManager.Instance.SpawnObject(
+            blockPrefab,
+            Vector3.zero,
+            Quaternion.identity,
+            blockParent
+        );
+
         RectTransform rt = go.GetComponent<RectTransform>();
 
         if (rt == null)
         {
-            Debug.LogError($"'{blockPrefab.name}' prefab'inde RectTransform bulunamadı! Bu bir UI prefab'ı olmalı. Lütfen Block Prefab'inizin bir UI Image veya Panel olduğundan emin olun.");
-            Destroy(go);
+            ObjectPoolManager.Instance.DespawnObject(blockPrefab, go);
             return null;
         }
 
         rt.sizeDelta = blockSize;
-        
+
         if (isFallingNewBlock)
         {
-        
-            float spawnYOffset = (emptyCountAbove + 1) * blockSize.y; 
-            rt.anchoredPosition = new Vector2(x * blockSize.x, spawnYOffset) + extraOffset; 
+            float spawnYOffset = (emptyCountAbove + 1) * blockSize.y;
+            rt.anchoredPosition = new Vector2(x * blockSize.x, spawnYOffset) + extraOffset;
         }
         else
         {
             rt.anchoredPosition = GetUIPosition(x, y);
         }
-        
+
         Block block = go.GetComponent<Block>();
         if (block == null)
         {
-            Debug.LogError($"'{blockPrefab.name}' prefab'inde Block script'i bulunamadı! Lütfen Block Prefab'inize Block script'ini ekleyin.", blockPrefab);
-            Destroy(go);
+            ObjectPoolManager.Instance.DespawnObject(blockPrefab, go);
             return null;
         }
+
         return block;
     }
 
@@ -183,6 +190,7 @@ public class Match3Manager : MonoBehaviour
                 yield return StartCoroutine(FillBoard());
             }
         }
+
         isProcessing = false;
     }
 
@@ -195,7 +203,6 @@ public class Match3Manager : MonoBehaviour
         {
             if (candidates.Count == 0)
             {
-                Debug.LogWarning($"GetValidRandomData: Konum ({x},{y}) için uygun aday BlockData kalmadı. Normal bloklardan rastgele seçiliyor.");
                 return normalBlocks[Random.Range(0, normalBlocks.Count)];
             }
 
@@ -235,6 +242,7 @@ public class Match3Manager : MonoBehaviour
                 candidates.Remove(chosenData);
             }
         }
+
         return normalBlocks[Random.Range(0, normalBlocks.Count)];
     }
 
@@ -303,7 +311,6 @@ public class Match3Manager : MonoBehaviour
 
         if (rtA == null || rtB == null)
         {
-            Debug.LogError("SwapAnim: Bir veya her iki bloğun RectTransform'u yok!");
             yield break;
         }
 
@@ -351,6 +358,7 @@ public class Match3Manager : MonoBehaviour
                 break;
             }
         }
+
         for (int x = pos.x + 1; x < width; x++)
         {
             if (grid[x, pos.y] != null && grid[x, pos.y].data == center.data)
@@ -362,6 +370,7 @@ public class Match3Manager : MonoBehaviour
                 break;
             }
         }
+
         if (horizontalMatches.Count >= 3)
         {
             matchedBlocks.AddRange(horizontalMatches);
@@ -379,6 +388,7 @@ public class Match3Manager : MonoBehaviour
                 break;
             }
         }
+
         for (int y = pos.y + 1; y < height; y++)
         {
             if (grid[pos.x, y] != null && grid[pos.x, y].data == center.data)
@@ -390,6 +400,7 @@ public class Match3Manager : MonoBehaviour
                 break;
             }
         }
+
         if (verticalMatches.Count >= 3)
         {
             matchedBlocks.AddRange(verticalMatches);
@@ -415,7 +426,7 @@ public class Match3Manager : MonoBehaviour
                 yield return StartCoroutine(DestroyBlocks(allMatches));
                 yield return StartCoroutine(FillBoard());
             }
-            
+
             List<Block> currentMatches = new List<Block>();
             for (int y = 0; y < height; y++)
             {
@@ -432,6 +443,7 @@ public class Match3Manager : MonoBehaviour
                     }
                 }
             }
+
             allMatches = currentMatches.Distinct().ToList();
         }
     }
@@ -442,13 +454,16 @@ public class Match3Manager : MonoBehaviour
         {
             if (b != null)
             {
-                if (b.gridPos.x >= 0 && b.gridPos.x < width && b.gridPos.y >= 0 && b.gridPos.y < height && grid[b.gridPos.x, b.gridPos.y] == b)
+                if (b.gridPos.x >= 0 && b.gridPos.x < width && b.gridPos.y >= 0 && b.gridPos.y < height &&
+                    grid[b.gridPos.x, b.gridPos.y] == b)
                 {
                     grid[b.gridPos.x, b.gridPos.y] = null;
                 }
-                Destroy(b.gameObject);
+
+                ObjectPoolManager.Instance.DespawnObject(blockPrefab, b.gameObject);
             }
         }
+
         yield return new WaitForSeconds(0.1f);
     }
 
@@ -468,7 +483,7 @@ public class Match3Manager : MonoBehaviour
                 else if (emptyCount > 0)
                 {
                     Block blockToMove = grid[x, y];
-                    
+
                     grid[x, y + emptyCount] = blockToMove;
                     grid[x, y] = null;
                     blockToMove.gridPos = new Vector2Int(x, y + emptyCount);
@@ -476,21 +491,20 @@ public class Match3Manager : MonoBehaviour
                     RectTransform rt = blockToMove.GetComponent<RectTransform>();
                     if (rt != null)
                     {
-                        Vector2 targetPos = GetUIPosition(x, y + emptyCount); 
+                        Vector2 targetPos = GetUIPosition(x, y + emptyCount);
                         moveCoroutines.Add(StartCoroutine(MoveBlockUI(rt, rt.anchoredPosition, targetPos, fallSpeed)));
                     }
                     else
                     {
-                        Debug.LogError($"FillBoard: Taşınacak blok ({x},{y}) RectTransform'u yoktu! Yok ediliyor.");
-                        Destroy(blockToMove.gameObject);
+                        ObjectPoolManager.Instance.DespawnObject(blockPrefab, blockToMove.gameObject);
                     }
                 }
             }
 
             for (int i = 0; i < emptyCount; i++)
             {
-                int targetY = i; 
-                Block newBlock = CreateBlockGameObject(x, targetY, true, emptyCount - i - 1); 
+                int targetY = i;
+                Block newBlock = CreateBlockGameObject(x, targetY, true, emptyCount - i - 1);
 
                 if (newBlock != null)
                 {
@@ -504,7 +518,6 @@ public class Match3Manager : MonoBehaviour
                     }
                     else
                     {
-                        Debug.LogError($"FillBoard: Yeni düşen blok ({x},{targetY}) için BlockData seçilemedi. Varsayılan atama yapılıyor.");
                         newBlock.Setup(normalBlocks[0]);
                     }
 
@@ -516,8 +529,7 @@ public class Match3Manager : MonoBehaviour
                     }
                     else
                     {
-                        Debug.LogError($"FillBoard: Yeni Blok ({x},{targetY}) RectTransform'u yoktu! Yok ediliyor.");
-                        Destroy(newBlock.gameObject);
+                        ObjectPoolManager.Instance.DespawnObject(blockPrefab, newBlock.gameObject);
                     }
                 }
             }
