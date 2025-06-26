@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78027f3fc277d7a479414974462a841b, type: 3}
   m_Name: Red
   m_EditorClassIdentifier: 
-  blockSprite: {fileID: 21300000, guid: 26eb3a5b257843b46a76e230e4a12448, type: 3}
-  blockColor: {r: 1, g: 0, b: 0, a: 1}
-  blockSize: {x: 1, y: 1}
+  sprite: {fileID: 21300000, guid: 26eb3a5b257843b46a76e230e4a12448, type: 3}
+  color: {r: 1, g: 0, b: 0, a: 1}
+  type: 0
